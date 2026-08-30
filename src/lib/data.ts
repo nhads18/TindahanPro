@@ -38,6 +38,7 @@ export interface Sale {
   payment: Payment;
   customerId?: string;
   total: number;
+  voided_at?: number;
 }
 
 export interface HistEntry {
