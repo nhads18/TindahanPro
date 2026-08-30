@@ -47,6 +47,15 @@ export default function BarcodeScanner({ onScan }: { onScan: (code: string) => v
   /* ---------- keyboard-wedge listener (always on) ---------- */
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
+      // A real hardware wedge scanner fires while nothing is focused (or focus
+      // sits somewhere inert). If focus is currently in a genuine editable
+      // element, these keystrokes are a person typing there — never buffer or
+      // flush a scan from them, regardless of how fast they happen to type.
+      const active = document.activeElement as HTMLElement | null;
+      const tag = active?.tagName;
+      const isEditableFocus = tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || !!active?.isContentEditable;
+      if (isEditableFocus) return;
+
       const now = performance.now();
       const gap = now - lastKeyTsRef.current;
       lastKeyTsRef.current = now;
