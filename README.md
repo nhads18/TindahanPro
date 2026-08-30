@@ -2,6 +2,8 @@
 
 **TindahanPro** is a Store OS for Philippine sari-sari (neighborhood) stores — point of sale, inventory, and *utang* (customer credit) tracking in one lightweight, offline-friendly web app.
 
+**Live demo:** https://tindahan-pro.vercel.app (demo mode — runs entirely in your browser, no sign-in needed)
+
 ## Features
 
 - **Dashboard** — today's sales, low-stock alerts, and a quick view of what's happening in the store.
