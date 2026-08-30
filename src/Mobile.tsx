@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   catMeta,
+  fmtDay,
   fmtTime,
   lowStock,
   overdueDays,
@@ -9,6 +10,7 @@ import {
   startOfDay,
   type Payment,
 } from "./lib/data";
+import { netCashFlow } from "./lib/cashflow";
 import { useStore } from "./lib/store";
 import { CountUp, Stepper } from "./components/ui";
 import {
@@ -19,25 +21,30 @@ import {
   IconBox,
   IconCheck,
   IconDash,
+  IconDown,
   IconSearch,
   IconSignal,
   IconSms,
+  IconUp,
   IconUsers,
+  IconWallet,
   LogoMark,
 } from "./components/Icons";
 
-type Tab = "home" | "benta" | "stock" | "suki";
+type Tab = "home" | "benta" | "stock" | "suki" | "pera";
 
 const NAV: { key: Tab; label: string; icon: (c: string) => React.ReactNode }[] = [
   { key: "home", label: "Home", icon: (c) => <IconDash className={c} /> },
   { key: "benta", label: "Benta", icon: (c) => <IconBasket className={c} /> },
   { key: "stock", label: "Stock", icon: (c) => <IconBox className={c} /> },
   { key: "suki", label: "Suki", icon: (c) => <IconUsers className={c} /> },
+  { key: "pera", label: "Pera", icon: (c) => <IconWallet className={c} /> },
 ];
 
 function PhoneApp() {
   const { db, settings, sync, recordSale, addStock, recordPayment, addUtang, notify } = useStore();
   const [tab, setTab] = useState<Tab>("home");
+  const flow = useMemo(() => netCashFlow(db), [db]);
   const [clock, setClock] = useState(Date.now());
   useEffect(() => {
     const id = window.setInterval(() => setClock(Date.now()), 30000);
@@ -376,8 +383,70 @@ function PhoneApp() {
         </div>
       )}
 
+      {/* ---------------- PERA (cash flow) ---------------- */}
+      {tab === "pera" && (
+        <div className="flex-1 space-y-3 overflow-y-auto p-3.5">
+          <div className="rounded-xl bg-pine p-4 text-card shadow-md">
+            <p className="flex items-center gap-1.5 text-[9px] font-extrabold uppercase tracking-[0.2em] text-mango">
+              <IconWallet className="h-3.5 w-3.5" /> Net cash flow
+            </p>
+            <p className={`mt-1 font-mono text-3xl font-bold ${flow.net >= 0 ? "text-mango" : "text-cherry-soft"}`}>
+              <CountUp value={flow.net} fmt={peso0} />
+            </p>
+            <p className="mt-1 text-[11px] text-card/70">
+              revenue {peso0(flow.revenue)} · gastos -{peso0(flow.expenses)} · pinamili -{peso0(flow.purchaseCost)}
+            </p>
+          </div>
+
+          <div>
+            <p className="mb-1.5 text-[10px] font-extrabold uppercase tracking-wider text-ink-soft">Recent expenses</p>
+            {db.expenses.length === 0 ? (
+              <p className="rounded-lg border border-line bg-card px-3 py-2.5 text-[11px] text-ink-soft">Wala pang naitala.</p>
+            ) : (
+              <ul className="space-y-1.5">
+                {db.expenses.slice(0, 6).map((e) => (
+                  <li key={e.id} className="flex items-center gap-2.5 rounded-lg border border-line bg-card px-3 py-2">
+                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-cherry-soft text-cherry">
+                      <IconDown className="h-3.5 w-3.5" />
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-xs font-bold capitalize">{e.category}</p>
+                      <p className="truncate text-[10px] text-ink-soft">{e.note || fmtDay(e.ts)}</p>
+                    </div>
+                    <span className="tnum shrink-0 font-mono text-xs font-bold text-cherry">-{peso0(e.amount)}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+
+          <div>
+            <p className="mb-1.5 text-[10px] font-extrabold uppercase tracking-wider text-ink-soft">Recent purchases</p>
+            {db.purchases.length === 0 ? (
+              <p className="rounded-lg border border-line bg-card px-3 py-2.5 text-[11px] text-ink-soft">Wala pang naitala.</p>
+            ) : (
+              <ul className="space-y-1.5">
+                {db.purchases.slice(0, 6).map((p) => (
+                  <li key={p.id} className="flex items-center gap-2.5 rounded-lg border border-line bg-card px-3 py-2">
+                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-leaf-soft text-leaf">
+                      <IconUp className="h-3.5 w-3.5" />
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-xs font-bold">{p.supplier}</p>
+                      <p className="truncate text-[10px] text-ink-soft">{fmtDay(p.ts)} · {p.items.length} item{p.items.length === 1 ? "" : "s"}</p>
+                    </div>
+                    <span className="tnum shrink-0 font-mono text-xs font-bold text-leaf">{peso0(p.total)}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+          <p className="text-center text-[10px] text-ink-soft">Full expense & purchase entry — open the web dashboard.</p>
+        </div>
+      )}
+
       {/* bottom nav */}
-      <nav className="grid grid-cols-4 border-t border-line bg-card">
+      <nav className="grid grid-cols-5 border-t border-line bg-card">
         {NAV.map((n) => (
           <button key={n.key} onClick={() => setTab(n.key)} className={`relative flex flex-col items-center gap-0.5 py-2.5 text-[10px] font-bold transition ${tab === n.key ? "text-pine" : "text-ink-soft"}`}>
             {tab === n.key && <span className="absolute top-0 h-0.5 w-9 rounded-full bg-mango" />}

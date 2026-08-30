@@ -92,7 +92,18 @@ export interface StoreBundle {
   customers: DB["customers"];
   sales: DB["sales"];
   movements: DB["movements"];
+  services: DB["services"];
+  expenses: DB["expenses"];
+  purchases: DB["purchases"];
 }
+
+/**
+ * The tp_services / tp_expenses / tp_purchases tables are not part of the
+ * Supabase schema yet (added in a later task). Until then these three
+ * collections are kept local-only: pull/push never touch the network for
+ * them, but they still round-trip through StoreBundle so callers (and
+ * normalizeDB) never have to special-case cloud vs. demo mode.
+ */
 
 const iso = (ms: number) => new Date(ms).toISOString();
 
@@ -169,6 +180,13 @@ export async function pullStore(storeId: string): Promise<{ bundle: StoreBundle 
 
   return {
     bundle: {
+      // tp_services / tp_expenses / tp_purchases don't exist in Supabase yet
+      // (schema lands in a later task) — returned empty here so StoreBundle
+      // is always fully shaped; the caller in store.tsx merges these back
+      // from local state on hydrate so a login never wipes device-only data.
+      services: [],
+      expenses: [],
+      purchases: [],
       products: ((p.data ?? []) as ProductRow[]).map((r) => ({
         id: r.id,
         name: r.name,
@@ -214,6 +232,13 @@ export async function pushStore(
 ): Promise<void> {
   if (!supa) throw new Error("Supabase is not configured");
   const rows = toRows(storeId, db);
+
+  // NOTE (Ruling R4 remainder): db.services / db.expenses / db.purchases are
+  // intentionally NOT pushed here — tp_services, tp_expenses and tp_purchases
+  // don't exist as Supabase tables yet (schema is added in a later task).
+  // Once those tables land, mirror the pattern below: build row shapes in
+  // toRows(), delete-then-insert them here, and stop merging them from local
+  // state in store.tsx's cloud hydrate.
 
   // delete current remote rows for this store…
   const dels = await Promise.all([

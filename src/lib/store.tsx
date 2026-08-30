@@ -14,8 +14,10 @@ import {
   peso,
   type Cat,
   type DB,
+  type Expense,
   type Payment,
   type Product,
+  type Purchase,
   type Sale,
 } from "./data";
 import { STRINGS, type Lang, type StrKey } from "./i18n";
@@ -70,6 +72,8 @@ interface StoreCtx {
   recordPayment: (customerId: string, amount: number) => void;
   addUtang: (customerId: string, amount: number, note?: string) => void;
   addCustomer: (name: string, phone: string) => void;
+  addExpense: (e: Omit<Expense, "id" | "ts">) => void;
+  addPurchase: (p: Omit<Purchase, "id" | "ts">) => void;
   updateSettings: (patch: Partial<Settings>) => void;
   resetDemo: () => void;
   cloud: { configured: boolean; mode: "demo" | "cloud" | "gate"; email: string | null };
@@ -174,7 +178,17 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       try {
         const { bundle, settings: remote } = await pullStore(user.id);
         if (bundle) {
-          setDb(normalizeDB({ anchor: freshAnchor(), ...bundle }));
+          // services/expenses/purchases aren't synced to Supabase yet (see
+          // Ruling R4 note in supabase.ts) — pullStore always returns them
+          // empty, so keep whatever is already on this device instead of
+          // wiping it on every login.
+          setDb(normalizeDB({
+            anchor: freshAnchor(),
+            ...bundle,
+            services: dbRef.current.services,
+            expenses: dbRef.current.expenses,
+            purchases: dbRef.current.purchases,
+          }));
           if (remote) setSettings((s) => ({ ...s, ...(remote as unknown as Partial<Settings>) }));
           notify("ok", "Synced from cloud", "Your store data is loaded");
         } else {
@@ -439,6 +453,49 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     [markSync, notify],
   );
 
+  const addExpense = useCallback(
+    (e: Omit<Expense, "id" | "ts">) => {
+      setDb((prev) => ({
+        ...prev,
+        expenses: [{ id: uid(), ts: Date.now(), ...e }, ...prev.expenses],
+      }));
+      markSync();
+      notify("warn", `${peso(e.amount)} gastos`, e.category);
+    },
+    [markSync, notify],
+  );
+
+  const addPurchase = useCallback(
+    (p: Omit<Purchase, "id" | "ts">) => {
+      const now = Date.now();
+      setDb((prev) => {
+        const movs: DB["movements"] = [];
+        const products = prev.products.map((prod) => {
+          const line = p.items.find((it) => it.product_id === prod.id);
+          if (!line) return prod;
+          movs.push({
+            id: uid(),
+            ts: now,
+            productId: prod.id,
+            name: prod.name,
+            type: "restock" as const,
+            qty: line.qty,
+          });
+          return { ...prod, stock: prod.stock + line.qty };
+        });
+        return {
+          ...prev,
+          products,
+          purchases: [{ id: uid(), ts: now, ...p }, ...prev.purchases],
+          movements: [...movs, ...prev.movements],
+        };
+      });
+      markSync();
+      notify("ok", `${peso(p.total)} pinamili`, p.supplier);
+    },
+    [markSync, notify],
+  );
+
   const updateSettings = useCallback(
     (patch: Partial<Settings>) => {
       setSettings((s) => ({ ...s, ...patch }));
@@ -493,6 +550,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         recordPayment,
         addUtang,
         addCustomer,
+        addExpense,
+        addPurchase,
         updateSettings,
         resetDemo,
         cloud: { configured, mode, email: cloudUser?.email ?? null },
