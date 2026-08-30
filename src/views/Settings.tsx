@@ -28,6 +28,10 @@ export default function SettingsView() {
   const [name, setName] = useState(settings.storeName);
   const [owner, setOwner] = useState(settings.owner);
   const [confirmReset, setConfirmReset] = useState(false);
+  const [rName, setRName] = useState(settings.receipt?.storeName ?? "");
+  const [rAddress, setRAddress] = useState(settings.receipt?.address ?? "");
+  const [rContact, setRContact] = useState(settings.receipt?.contact ?? "");
+  const [rFooter, setRFooter] = useState(settings.receipt?.footer ?? "");
 
   return (
     <div className="grid gap-5 lg:grid-cols-2">
@@ -47,6 +51,58 @@ export default function SettingsView() {
               onClick={() => {
                 updateSettings({ storeName: name, owner });
                 notify("ok", "Profile saved", "Settings synced to all devices");
+              }}
+              className="btn-press rounded-lg bg-pine px-4 py-2 text-xs font-extrabold uppercase tracking-wide text-mango transition hover:bg-pine-deep"
+            >
+              Save changes
+            </button>
+          </div>
+        </div>
+      </Reveal>
+
+      {/* receipt header */}
+      <Reveal delay={15}>
+        <div className="rounded-xl border border-line bg-card p-5 shadow-sm">
+          <h2 className="font-display text-lg font-bold">Receipt header</h2>
+          <p className="mb-4 text-xs text-ink-soft">Shown at the top of printed &amp; shared resibo</p>
+          <div className="space-y-3.5">
+            <Field
+              label="Store name on receipt"
+              placeholder={settings.storeName}
+              value={rName}
+              onChange={(e) => setRName(e.target.value)}
+            />
+            <div className="grid grid-cols-2 gap-3">
+              <Field
+                label="Address"
+                placeholder="123 Rizal St., Brgy. Malaya, QC"
+                value={rAddress}
+                onChange={(e) => setRAddress(e.target.value)}
+              />
+              <Field
+                label="Contact"
+                placeholder="0917 555 0000"
+                value={rContact}
+                onChange={(e) => setRContact(e.target.value)}
+              />
+            </div>
+            <Field
+              label="Footer note"
+              placeholder="Salamat sa pagsuporta! No return, no exchange."
+              value={rFooter}
+              onChange={(e) => setRFooter(e.target.value)}
+            />
+            <button
+              onClick={() => {
+                updateSettings({
+                  receipt: {
+                    storeName: rName.trim(),
+                    address: rAddress.trim(),
+                    contact: rContact.trim(),
+                    footer: rFooter.trim(),
+                  },
+                });
+                notify("ok", "Receipt header saved", "New sales will print with this header");
               }}
               className="btn-press rounded-lg bg-pine px-4 py-2 text-xs font-extrabold uppercase tracking-wide text-mango transition hover:bg-pine-deep"
             >

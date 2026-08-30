@@ -1,1 +1,30 @@
 @import "tailwindcss";
+
+/* ------------------------------------------------------------------ */
+/* Printable receipt — isolate .receipt from the rest of the app chrome */
+/* ------------------------------------------------------------------ */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  .receipt,
+  .receipt * {
+    visibility: visible;
+  }
+  .receipt {
+    position: absolute;
+    inset: 0 auto auto 0;
+    left: 0;
+    top: 0;
+    width: 100%;
+    max-width: 100%;
+    margin: 0;
+    padding: 16px;
+    border: none;
+    box-shadow: none;
+  }
+  .receipt-actions {
+    display: none !important;
+  }
+}
+

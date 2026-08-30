@@ -1,9 +1,10 @@
 import { useMemo, useState } from "react";
 import { catMeta, fmtTime, peso, peso0, startOfDay, type Payment } from "../lib/data";
 import { useStore } from "../lib/store";
-import { PayBadge, Reveal, Seg, Stepper, TwoStepDelete } from "../components/ui";
+import { Modal, PayBadge, Reveal, Seg, Stepper, TwoStepDelete } from "../components/ui";
 import { CategoryGlyph, IconBarcode, IconCheck, IconReceipt, IconSearch, IconX } from "../components/Icons";
 import BarcodeScanner from "../components/BarcodeScanner";
+import Receipt from "../components/Receipt";
 
 const DAY = 86400000;
 
@@ -25,6 +26,7 @@ export default function SalesView() {
   const [payment, setPayment] = useState<Payment>("cash");
   const [customerId, setCustomerId] = useState("");
   const [scanning, setScanning] = useState(false);
+  const [receiptSaleId, setReceiptSaleId] = useState<string | null>(null);
 
   /* ---------- ledger state ---------- */
   const [dayTab, setDayTab] = useState<"today" | "yesterday">("today");
@@ -75,7 +77,7 @@ export default function SalesView() {
 
   const complete = () => {
     if (!canComplete) return;
-    recordSale({
+    const saleId = recordSale({
       lines: Object.entries(lines).map(([productId, qty]) => ({ productId, qty })),
       payment,
       customerId: payment === "utang" ? customerId : undefined,
@@ -83,7 +85,10 @@ export default function SalesView() {
     setLines({});
     setPayment("cash");
     setCustomerId("");
+    setReceiptSaleId(saleId);
   };
+
+  const receiptSale = receiptSaleId ? db.sales.find((s) => s.id === receiptSaleId) ?? null : null;
 
   /* ---------- ledger ---------- */
   const today0 = startOfDay(Date.now());
@@ -315,7 +320,17 @@ export default function SalesView() {
                 </span>
                 <PayBadge p={s.payment} size="sm" />
                 <span className="tnum hidden font-mono text-sm font-bold sm:block">{peso(s.total)}</span>
-                <TwoStepDelete onConfirm={() => deleteSale(s.id)} />
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => setReceiptSaleId(s.id)}
+                    className="btn-press rounded-md p-1.5 text-ink-soft transition hover:bg-pine-soft hover:text-pine"
+                    aria-label="View receipt"
+                    title="View receipt"
+                  >
+                    <IconReceipt className="h-4 w-4" />
+                  </button>
+                  <TwoStepDelete onConfirm={() => deleteSale(s.id)} />
+                </div>
               </li>
             ))}
           </ul>
@@ -328,6 +343,10 @@ export default function SalesView() {
           </div>
         </div>
       </Reveal>
+
+      <Modal open={!!receiptSale} onClose={() => setReceiptSaleId(null)} title="Resibo / Receipt">
+        {receiptSale && <Receipt sale={receiptSale} />}
+      </Modal>
     </div>
   );
 }

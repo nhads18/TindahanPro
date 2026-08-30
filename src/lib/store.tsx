@@ -65,7 +65,7 @@ interface StoreCtx {
   sync: { status: "synced" | "syncing"; last: number };
   t: (k: StrKey) => string;
   notify: (kind: Toast["kind"], title: string, sub?: string) => void;
-  recordSale: (input: SaleInput) => number;
+  recordSale: (input: SaleInput) => string;
   deleteSale: (id: string) => void;
   updateProduct: (id: string, patch: Partial<Product>) => void;
   addProduct: (p: { name: string; cat: Cat; price: number; cost: number; stock: number; barcode?: string }) => void;
@@ -227,8 +227,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   );
 
   const recordSale = useCallback(
-    (input: SaleInput): number => {
-      let total = 0;
+    (input: SaleInput): string => {
       const now = Date.now();
       const sale: Sale = {
         id: uid(),
@@ -293,7 +292,6 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           movements: [...movs, ...prev.movements],
         };
       });
-      total = sale.total;
       markSync();
       notify(
         "ok",
@@ -302,7 +300,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           sale.payment === "gcash" ? "GCash" : sale.payment === "utang" ? "Utang" : "Cash"
         }`,
       );
-      return total;
+      return sale.id;
     },
     [markSync, notify],
   );
