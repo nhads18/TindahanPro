@@ -4,14 +4,14 @@
 /* Printable receipt — isolate .receipt from the rest of the app chrome */
 /* ------------------------------------------------------------------ */
 @media print {
-  body * {
+  body.printing-receipt * {
     visibility: hidden;
   }
-  .receipt,
-  .receipt * {
+  body.printing-receipt .receipt,
+  body.printing-receipt .receipt * {
     visibility: visible;
   }
-  .receipt {
+  body.printing-receipt .receipt {
     position: absolute;
     inset: 0 auto auto 0;
     left: 0;
@@ -23,7 +23,12 @@
     border: none;
     box-shadow: none;
   }
-  .receipt-actions {
+  body.printing-receipt .receipt-actions {
+    display: none !important;
+  }
+
+  /* Non-receipt print paths (e.g. Reports) hide app chrome via .no-print */
+  .no-print {
     display: none !important;
   }
 }

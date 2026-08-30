@@ -33,11 +33,22 @@ export default function Receipt({ sale }: { sale: Sale }) {
     `TOTAL: ${peso(sale.total)}`,
     `Payment: ${sale.payment === "gcash" ? "GCash" : sale.payment === "utang" ? "Utang" : "Cash"}`,
     customer ? `Suki: ${customer.name}` : "",
-    r.footer ? "" : "",
     r.footer,
   ]
     .filter((l) => l !== undefined && l !== "")
     .join("\n");
+
+  const handlePrint = () => {
+    const cleanup = () => document.body.classList.remove("printing-receipt");
+    window.addEventListener("afterprint", cleanup, { once: true });
+    document.body.classList.add("printing-receipt");
+    try {
+      window.print();
+    } finally {
+      // Most browsers fire `afterprint`; this is a fallback for those that don't.
+      window.setTimeout(cleanup, 1000);
+    }
+  };
 
   const handleShare = async () => {
     if (typeof navigator !== "undefined" && navigator.share) {
@@ -112,7 +123,7 @@ export default function Receipt({ sale }: { sale: Sale }) {
 
       <div className="receipt-actions mt-4 flex gap-2">
         <button
-          onClick={() => window.print()}
+          onClick={handlePrint}
           className="btn-press inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-pine px-4 py-2 text-xs font-extrabold uppercase tracking-wide text-mango transition hover:bg-pine-deep"
         >
           <IconPrint className="h-4 w-4" /> Print

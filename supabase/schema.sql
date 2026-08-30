@@ -125,13 +125,21 @@ alter table public.tp_services   enable row level security;
 alter table public.tp_expenses   enable row level security;
 alter table public.tp_purchases  enable row level security;
 
+drop policy if exists "owner full access — settings"  on public.tp_settings;
 create policy "owner full access — settings"  on public.tp_settings   for all using (auth.uid() = store_id) with check (auth.uid() = store_id);
+drop policy if exists "owner full access — products"  on public.tp_products;
 create policy "owner full access — products"  on public.tp_products   for all using (auth.uid() = store_id) with check (auth.uid() = store_id);
+drop policy if exists "owner full access — customers" on public.tp_customers;
 create policy "owner full access — customers" on public.tp_customers  for all using (auth.uid() = store_id) with check (auth.uid() = store_id);
+drop policy if exists "owner full access — sales"     on public.tp_sales;
 create policy "owner full access — sales"     on public.tp_sales      for all using (auth.uid() = store_id) with check (auth.uid() = store_id);
+drop policy if exists "owner full access — movements" on public.tp_movements;
 create policy "owner full access — movements" on public.tp_movements  for all using (auth.uid() = store_id) with check (auth.uid() = store_id);
+drop policy if exists "owner full access — services"  on public.tp_services;
 create policy "owner full access — services"  on public.tp_services   for all using (auth.uid() = store_id) with check (auth.uid() = store_id);
+drop policy if exists "owner full access — expenses"  on public.tp_expenses;
 create policy "owner full access — expenses"  on public.tp_expenses   for all using (auth.uid() = store_id) with check (auth.uid() = store_id);
+drop policy if exists "owner full access — purchases" on public.tp_purchases;
 create policy "owner full access — purchases" on public.tp_purchases  for all using (auth.uid() = store_id) with check (auth.uid() = store_id);
 
 -- ============================================================
@@ -141,14 +149,17 @@ insert into storage.buckets (id, name, public)
 values ('product-photos', 'product-photos', true)
 on conflict (id) do nothing;
 
+drop policy if exists "anyone reads photos" on storage.objects;
 create policy "anyone reads photos"
   on storage.objects for select
   using (bucket_id = 'product-photos');
 
+drop policy if exists "owners upload photos" on storage.objects;
 create policy "owners upload photos"
   on storage.objects for insert to authenticated
   with check (bucket_id = 'product-photos' and (storage.foldername(name))[1] = auth.uid()::text);
 
+drop policy if exists "owners delete own photos" on storage.objects;
 create policy "owners delete own photos"
   on storage.objects for delete to authenticated
   using (bucket_id = 'product-photos' and (storage.foldername(name))[1] = auth.uid()::text);

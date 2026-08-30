@@ -57,11 +57,11 @@ export default function CashFlow() {
   const submitPurchase = () => {
     if (!supplier.trim()) return;
     const items = lines
-      .filter((l) => l.product_id && parseFloat(l.qty) > 0)
+      .filter((l) => l.product_id && parseInt(l.qty, 10) > 0)
       .map((l) => {
         const prod = db.products.find((p) => p.id === l.product_id)!;
         const qty = parseInt(l.qty, 10);
-        const unit_cost = parseFloat(l.unit_cost) || 0;
+        const unit_cost = Math.max(0, parseFloat(l.unit_cost) || 0);
         return { product_id: prod.id, name: prod.name, qty, unit_cost };
       });
     if (!items.length) return;
