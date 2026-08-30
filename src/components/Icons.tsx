@@ -349,6 +349,19 @@ export const IconRocket = (p: P) => (
   </S>
 );
 
+export const IconBarcode = (p: P) => (
+  <S {...p}>
+    <path d="M4 5v14M8 5v14M11 5v14M14.5 5v14M17 5v14M20 5v14" strokeWidth="1.6" />
+  </S>
+);
+
+export const IconCamera = (p: P) => (
+  <S {...p}>
+    <path d="M4 8.5A1.5 1.5 0 0 1 5.5 7h2l1.2-2h6.6l1.2 2h2A1.5 1.5 0 0 1 20 8.5v9A1.5 1.5 0 0 1 18.5 19h-13A1.5 1.5 0 0 1 4 17.5z" />
+    <circle cx="12" cy="12.5" r="3.4" />
+  </S>
+);
+
 export const IconCopy = (p: P) => (
   <S {...p}>
     <rect x="8.5" y="8.5" width="12" height="12" rx="2" />

@@ -68,7 +68,7 @@ interface StoreCtx {
   recordSale: (input: SaleInput) => number;
   deleteSale: (id: string) => void;
   updateProduct: (id: string, patch: Partial<Product>) => void;
-  addProduct: (p: { name: string; cat: Cat; price: number; cost: number; stock: number }) => void;
+  addProduct: (p: { name: string; cat: Cat; price: number; cost: number; stock: number; barcode?: string }) => void;
   addStock: (productId: string, qty: number) => void;
   recordPayment: (customerId: string, amount: number) => void;
   addUtang: (customerId: string, amount: number, note?: string) => void;
@@ -362,7 +362,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   );
 
   const addProduct = useCallback(
-    (p: { name: string; cat: Cat; price: number; cost: number; stock: number }) => {
+    (p: { name: string; cat: Cat; price: number; cost: number; stock: number; barcode?: string }) => {
       setDb((prev) => ({
         ...prev,
         products: [{ id: uid(), ...p }, ...prev.products],

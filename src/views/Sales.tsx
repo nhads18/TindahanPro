@@ -2,7 +2,8 @@ import { useMemo, useState } from "react";
 import { catMeta, fmtTime, peso, peso0, startOfDay, type Payment } from "../lib/data";
 import { useStore } from "../lib/store";
 import { PayBadge, Reveal, Seg, Stepper, TwoStepDelete } from "../components/ui";
-import { CategoryGlyph, IconCheck, IconReceipt, IconSearch, IconX } from "../components/Icons";
+import { CategoryGlyph, IconBarcode, IconCheck, IconReceipt, IconSearch, IconX } from "../components/Icons";
+import BarcodeScanner from "../components/BarcodeScanner";
 
 const DAY = 86400000;
 
@@ -16,13 +17,14 @@ const bucket = (ts: number): TimeBucket => {
 };
 
 export default function SalesView() {
-  const { db, t, recordSale, deleteSale } = useStore();
+  const { db, t, recordSale, deleteSale, notify } = useStore();
 
   /* ---------- POS state ---------- */
   const [lines, setLines] = useState<Record<string, number>>({});
   const [query, setQuery] = useState("");
   const [payment, setPayment] = useState<Payment>("cash");
   const [customerId, setCustomerId] = useState("");
+  const [scanning, setScanning] = useState(false);
 
   /* ---------- ledger state ---------- */
   const [dayTab, setDayTab] = useState<"today" | "yesterday">("today");
@@ -45,6 +47,20 @@ export default function SalesView() {
       if (cur >= p.stock) return prev;
       return { ...prev, [id]: cur + 1 };
     });
+
+  const handleScan = (code: string) => {
+    const p = db.products.find((x) => x.barcode && x.barcode === code);
+    if (!p) {
+      notify("warn", "Barcode not found", code);
+      return;
+    }
+    if (p.stock <= (lines[p.id] ?? 0)) {
+      notify("warn", "Out of stock", p.name);
+      return;
+    }
+    addLine(p.id);
+    notify("ok", "Added to cart", p.name);
+  };
 
   const total = useMemo(
     () =>
@@ -101,15 +117,31 @@ export default function SalesView() {
           </div>
 
           <div className="p-4">
-            <div className="relative mb-3">
-              <IconSearch className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-soft" />
-              <input
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder={t("searchPh")}
-                className="field pl-9"
-              />
+            <div className="mb-3 flex items-center gap-2">
+              <div className="relative flex-1">
+                <IconSearch className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-soft" />
+                <input
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder={t("searchPh")}
+                  className="field pl-9"
+                />
+              </div>
+              <button
+                onClick={() => setScanning((s) => !s)}
+                className={`btn-press inline-flex shrink-0 items-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-bold transition ${
+                  scanning ? "border-pine bg-pine text-mango" : "border-line bg-card text-ink-soft hover:border-pine hover:bg-pine-soft"
+                }`}
+              >
+                <IconBarcode className="h-4 w-4" /> Scan
+              </button>
             </div>
+
+            {scanning && (
+              <div className="mb-3">
+                <BarcodeScanner onScan={handleScan} />
+              </div>
+            )}
 
             <div className="mb-3 grid max-h-56 grid-cols-2 gap-2 overflow-y-auto pr-1">
               {matches.map((p) => (

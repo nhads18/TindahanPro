@@ -6,6 +6,42 @@ import { CategoryGlyph, IconDown, IconDownload, IconPlus, IconSearch, IconUp } f
 
 type SortKey = "name" | "price" | "cost" | "margin" | "stock" | "sold";
 
+function EditableBarcode({ value, onCommit }: { value?: string; onCommit: (v: string) => void }) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState("");
+  const commit = () => {
+    onCommit(draft.trim());
+    setEditing(false);
+  };
+  if (editing)
+    return (
+      <input
+        autoFocus
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={commit}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") commit();
+          if (e.key === "Escape") setEditing(false);
+        }}
+        placeholder="Barcode"
+        className="field w-28 px-1.5 py-0.5 font-mono text-[11px]"
+      />
+    );
+  return (
+    <button
+      onClick={() => {
+        setDraft(value ?? "");
+        setEditing(true);
+      }}
+      title="Click to edit barcode"
+      className="rounded border border-dashed border-transparent px-1 py-0.5 font-mono text-[10px] text-ink-soft transition hover:border-mango hover:bg-mango-soft"
+    >
+      {value ? value : "+ barcode"}
+    </button>
+  );
+}
+
 function EditableNum({
   value,
   onCommit,
@@ -61,7 +97,7 @@ export default function ProductsView() {
   const [sortKey, setSortKey] = useState<SortKey>("name");
   const [dir, setDir] = useState<1 | -1>(1);
   const [modal, setModal] = useState(false);
-  const [form, setForm] = useState({ name: "", cat: "noodles" as Cat, price: "", cost: "", stock: "" });
+  const [form, setForm] = useState({ name: "", cat: "noodles" as Cat, price: "", cost: "", stock: "", barcode: "" });
   const searchRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -124,8 +160,9 @@ export default function ProductsView() {
       price,
       cost: Number.isNaN(cost) ? price * 0.8 : cost,
       stock: Number.isNaN(stock) ? 0 : stock,
+      barcode: form.barcode.trim() || undefined,
     });
-    setForm({ name: "", cat: "noodles", price: "", cost: "", stock: "" });
+    setForm({ name: "", cat: "noodles", price: "", cost: "", stock: "", barcode: "" });
     setModal(false);
   };
 
@@ -202,7 +239,11 @@ export default function ProductsView() {
                       </span>
                       <div>
                         <p className="font-semibold leading-tight">{p.name}</p>
-                        <p className="text-[11px] text-ink-soft">{catMeta(p.cat).en}</p>
+                        <div className="flex items-center gap-1.5 text-[11px] text-ink-soft">
+                          <span>{catMeta(p.cat).en}</span>
+                          <span className="text-line">·</span>
+                          <EditableBarcode value={p.barcode} onCommit={(v) => updateProduct(p.id, { barcode: v || undefined })} />
+                        </div>
                       </div>
                     </div>
                   </td>
@@ -260,6 +301,12 @@ export default function ProductsView() {
             <Field label="Cost ₱" type="number" step="0.25" value={form.cost} onChange={(e) => setForm({ ...form, cost: e.target.value })} placeholder="9.5" />
             <Field label="Stock" type="number" value={form.stock} onChange={(e) => setForm({ ...form, stock: e.target.value })} placeholder="24" />
           </div>
+          <Field
+            label="Barcode (optional)"
+            value={form.barcode}
+            onChange={(e) => setForm({ ...form, barcode: e.target.value })}
+            placeholder="e.g. 4800016641503"
+          />
           <button
             onClick={submit}
             disabled={!form.name.trim() || !(parseFloat(form.price) > 0)}
