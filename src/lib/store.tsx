@@ -470,18 +470,26 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       const now = Date.now();
       setDb((prev) => {
         const movs: DB["movements"] = [];
+        // Walk each line item independently (not each product) so two lines
+        // for the same product_id — e.g. same item at two different unit
+        // costs — both land in stock and in the movement log instead of the
+        // second line silently overwriting the first.
         const products = prev.products.map((prod) => {
-          const line = p.items.find((it) => it.product_id === prod.id);
-          if (!line) return prod;
-          movs.push({
-            id: uid(),
-            ts: now,
-            productId: prod.id,
-            name: prod.name,
-            type: "restock" as const,
-            qty: line.qty,
-          });
-          return { ...prod, stock: prod.stock + line.qty };
+          const lines = p.items.filter((it) => it.product_id === prod.id);
+          if (!lines.length) return prod;
+          let stock = prod.stock;
+          for (const line of lines) {
+            movs.push({
+              id: uid(),
+              ts: now,
+              productId: prod.id,
+              name: prod.name,
+              type: "restock" as const,
+              qty: line.qty,
+            });
+            stock += line.qty;
+          }
+          return { ...prod, stock };
         });
         return {
           ...prev,
