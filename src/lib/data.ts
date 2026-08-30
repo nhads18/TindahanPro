@@ -39,6 +39,8 @@ export interface Sale {
   customerId?: string;
   total: number;
   discount?: number;
+  pointsEarned?: number;
+  pointsRedeemed?: number;
   voided_at?: number;
 }
 

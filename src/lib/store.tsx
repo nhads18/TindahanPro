@@ -303,6 +303,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             const current = c.points ?? 0;
             const redeemed = Math.max(0, Math.min(Math.floor(input.redeemPoints ?? 0), current));
             const earned = pointsEarned(sale.total, loyalty);
+            if (redeemed > 0) sale.pointsRedeemed = redeemed;
+            if (earned > 0) sale.pointsEarned = earned;
             return { ...c, points: Math.max(0, current - redeemed + earned) };
           });
         }
@@ -337,24 +339,36 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           return it ? { ...p, stock: p.stock + it.qty } : p;
         });
         let customers = prev.customers;
-        if (sale.payment === "utang" && sale.customerId) {
-          customers = prev.customers.map((c) =>
-            c.id === sale.customerId
-              ? {
-                  ...c,
-                  balance: Math.max(0, c.balance - sale.total),
-                  history: [
-                    ...c.history,
-                    {
-                      ts: Date.now(),
-                      type: "payment" as const,
-                      amount: sale.total,
-                      note: "Voided entry",
-                    },
-                  ],
-                }
-              : c,
-          );
+        if (sale.customerId) {
+          customers = prev.customers.map((c) => {
+            if (c.id !== sale.customerId) return c;
+            let next = c;
+            if (sale.payment === "utang") {
+              next = {
+                ...next,
+                balance: Math.max(0, next.balance - sale.total),
+                history: [
+                  ...next.history,
+                  {
+                    ts: Date.now(),
+                    type: "payment" as const,
+                    amount: sale.total,
+                    note: "Voided entry",
+                  },
+                ],
+              };
+            }
+            // reverse any loyalty points this sale earned/redeemed, so voiding a
+            // sale can't leave the suki's points permanently inflated or short
+            if (sale.pointsEarned || sale.pointsRedeemed) {
+              const current = next.points ?? 0;
+              next = {
+                ...next,
+                points: Math.max(0, current - (sale.pointsEarned ?? 0) + (sale.pointsRedeemed ?? 0)),
+              };
+            }
+            return next;
+          });
         }
         return {
           ...prev,
