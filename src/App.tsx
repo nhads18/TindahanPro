@@ -55,10 +55,18 @@ const VIEWS: Record<View, ComponentType> = {
   settings: SettingsView,
 };
 
+const OWNER_ONLY: View[] = ["reports", "settings", "cashflow"];
+
 function Shell() {
   const { db, t, settings, updateSettings, sync, toasts } = useStore();
   const [view, setView] = useState<View>("dashboard");
   const [device, setDevice] = useState<"web" | "mobile">("web");
+  const isCashier = (settings.activeRole ?? "owner") === "cashier";
+  const nav = isCashier ? NAV.filter((n) => !OWNER_ONLY.includes(n.key)) : NAV;
+
+  useEffect(() => {
+    if (isCashier && OWNER_ONLY.includes(view)) setView("dashboard");
+  }, [isCashier, view]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -106,7 +114,7 @@ function Shell() {
           </div>
 
           <nav className="mt-2 flex-1 space-y-1 px-2 lg:px-3">
-            {NAV.map((n) => {
+            {nav.map((n) => {
               const active = view === n.key;
               const b = badge(n.key);
               return (
@@ -164,6 +172,15 @@ function Shell() {
                     { key: "tl", label: "TL" },
                   ]}
                 />
+                <Seg<"owner" | "cashier">
+                  size="sm"
+                  value={settings.activeRole ?? "owner"}
+                  onChange={(v) => updateSettings({ activeRole: v })}
+                  options={[
+                    { key: "owner", label: "Owner" },
+                    { key: "cashier", label: "Cashier" },
+                  ]}
+                />
                 <div className="hidden sm:block">
                   <Seg<"web" | "mobile">
                     size="sm"
@@ -182,7 +199,7 @@ function Shell() {
             </div>
             {/* mobile web nav */}
             <nav className="flex gap-1 overflow-x-auto border-t border-line px-3 py-2 md:hidden">
-              {NAV.map((n) => (
+              {nav.map((n) => (
                 <button
                   key={n.key}
                   onClick={() => setView(n.key)}

@@ -43,9 +43,16 @@ const NAV: { key: Tab; label: string; icon: (c: string) => React.ReactNode }[] =
   { key: "pera", label: "Pera", icon: (c) => <IconWallet className={c} /> },
 ];
 
+const OWNER_ONLY_TABS: Tab[] = ["pera"];
+
 function PhoneApp() {
   const { db, settings, sync, recordSale, addStock, recordPayment, addUtang, notify } = useStore();
+  const isCashier = (settings.activeRole ?? "owner") === "cashier";
+  const nav = isCashier ? NAV.filter((n) => !OWNER_ONLY_TABS.includes(n.key)) : NAV;
   const [tab, setTab] = useState<Tab>("home");
+  useEffect(() => {
+    if (isCashier && OWNER_ONLY_TABS.includes(tab)) setTab("home");
+  }, [isCashier, tab]);
   const flow = useMemo(() => netCashFlow(db), [db]);
   const svcCommission = useMemo(() => serviceCommissionTotal(db), [db]);
   const [clock, setClock] = useState(Date.now());
@@ -469,8 +476,8 @@ function PhoneApp() {
       )}
 
       {/* bottom nav */}
-      <nav className="grid grid-cols-5 border-t border-line bg-card">
-        {NAV.map((n) => (
+      <nav className="grid border-t border-line bg-card" style={{ gridTemplateColumns: `repeat(${nav.length}, minmax(0, 1fr))` }}>
+        {nav.map((n) => (
           <button key={n.key} onClick={() => setTab(n.key)} className={`relative flex flex-col items-center gap-0.5 py-2.5 text-[10px] font-bold transition ${tab === n.key ? "text-pine" : "text-ink-soft"}`}>
             {tab === n.key && <span className="absolute top-0 h-0.5 w-9 rounded-full bg-mango" />}
             {n.icon("h-5 w-5")}

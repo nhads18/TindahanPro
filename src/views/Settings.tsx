@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useStore } from "../lib/store";
 import { Field, Modal, Reveal, Seg } from "../components/ui";
-import { IconCheck, IconGear, IconSheets, IconSync, IconUsers } from "../components/Icons";
+import { IconCheck, IconGear, IconSheets, IconSync, IconUsers, IconX } from "../components/Icons";
 import type { Lang } from "../lib/i18n";
 
 function Switch({ on, onToggle }: { on: boolean; onToggle: () => void }) {
@@ -17,12 +17,6 @@ function Switch({ on, onToggle }: { on: boolean; onToggle: () => void }) {
   );
 }
 
-const TEAM = [
-  { name: "Aling Nena", role: "Owner", tint: "bg-mango text-pine-deep", desc: "Full access — sales, profit, utang, settings" },
-  { name: "Kuya Jojo", role: "Helper", tint: "bg-leaf-soft text-leaf", desc: "Records sales & stock · hindi nakikita ang profit" },
-  { name: "Ate Len", role: "Accountant", tint: "bg-gcash-soft text-gcash", desc: "View-only reports & exports for BIR" },
-];
-
 export default function SettingsView() {
   const { settings, updateSettings, notify, resetDemo, cloud, logout } = useStore();
   const [name, setName] = useState(settings.storeName);
@@ -32,6 +26,16 @@ export default function SettingsView() {
   const [rAddress, setRAddress] = useState(settings.receipt?.address ?? "");
   const [rContact, setRContact] = useState(settings.receipt?.contact ?? "");
   const [rFooter, setRFooter] = useState(settings.receipt?.footer ?? "");
+
+  const loyalty = settings.loyalty ?? { enabled: false, pesosPerPoint: 50, pointValue: 1 };
+  const [loyEnabled, setLoyEnabled] = useState(loyalty.enabled);
+  const [loyPesos, setLoyPesos] = useState(String(loyalty.pesosPerPoint));
+  const [loyValue, setLoyValue] = useState(String(loyalty.pointValue));
+
+  const staff = settings.staff ?? [];
+  const [staffName, setStaffName] = useState("");
+  const [staffRole, setStaffRole] = useState<"owner" | "cashier">("cashier");
+  const activeRole = settings.activeRole ?? "owner";
 
   return (
     <div className="grid gap-5 lg:grid-cols-2">
@@ -103,6 +107,51 @@ export default function SettingsView() {
                   },
                 });
                 notify("ok", "Receipt header saved", "New sales will print with this header");
+              }}
+              className="btn-press rounded-lg bg-pine px-4 py-2 text-xs font-extrabold uppercase tracking-wide text-mango transition hover:bg-pine-deep"
+            >
+              Save changes
+            </button>
+          </div>
+        </div>
+      </Reveal>
+
+      {/* loyalty */}
+      <Reveal delay={20}>
+        <div className="rounded-xl border border-line bg-card p-5 shadow-sm">
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <div>
+              <h2 className="font-display text-lg font-bold">Suki points / loyalty</h2>
+              <p className="text-xs text-ink-soft">Award points per peso spent · let suki redeem for discounts</p>
+            </div>
+            <Switch on={loyEnabled} onToggle={() => setLoyEnabled((v) => !v)} />
+          </div>
+          <div className="space-y-3.5">
+            <div className="grid grid-cols-2 gap-3">
+              <Field
+                label="₱ per point earned"
+                type="number"
+                value={loyPesos}
+                onChange={(e) => setLoyPesos(e.target.value)}
+                placeholder="50"
+              />
+              <Field
+                label="₱ value per point redeemed"
+                type="number"
+                value={loyValue}
+                onChange={(e) => setLoyValue(e.target.value)}
+                placeholder="1"
+              />
+            </div>
+            <p className="text-[11px] text-ink-soft">
+              e.g. ₱{loyPesos || "50"} spent = 1 point · redeeming 1 point = ₱{loyValue || "1"} off the next sale
+            </p>
+            <button
+              onClick={() => {
+                const pesosPerPoint = Math.max(0, parseFloat(loyPesos) || 0);
+                const pointValue = Math.max(0, parseFloat(loyValue) || 0);
+                updateSettings({ loyalty: { enabled: loyEnabled, pesosPerPoint, pointValue } });
+                notify("ok", "Loyalty settings saved", loyEnabled ? "Points now active at checkout" : "Points earning paused");
               }}
               className="btn-press rounded-lg bg-pine px-4 py-2 text-xs font-extrabold uppercase tracking-wide text-mango transition hover:bg-pine-deep"
             >
@@ -232,7 +281,7 @@ export default function SettingsView() {
           <div className="mb-4 flex items-center justify-between">
             <div>
               <h2 className="font-display text-lg font-bold">Team &amp; roles</h2>
-              <p className="text-xs text-ink-soft">Role-based access — helpers can't see profit</p>
+              <p className="text-xs text-ink-soft">Cashiers can't see Reports, Settings, or Cash Flow</p>
             </div>
             <button
               onClick={() => notify("info", "Invite link copied", "Send it to your helper's phone")}
@@ -241,20 +290,80 @@ export default function SettingsView() {
               <IconUsers className="h-3.5 w-3.5" /> Invite
             </button>
           </div>
-          <ul className="space-y-2.5">
-            {TEAM.map((m) => (
-              <li key={m.name} className="flex items-center gap-3 rounded-lg border border-line bg-paper/60 px-3.5 py-2.5 transition hover:bg-pine-soft/50">
-                <span className={`flex h-9 w-9 items-center justify-center rounded-full font-display text-xs font-extrabold ${m.tint}`}>
-                  {m.name.split(" ").map((w) => w[0]).slice(0, 2).join("")}
-                </span>
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-bold">{m.name}</p>
-                  <p className="truncate text-[11px] text-ink-soft">{m.desc}</p>
-                </div>
-                <span className={`rounded-full px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wide ${m.tint}`}>{m.role}</span>
-              </li>
-            ))}
-          </ul>
+
+          {/* active role switch — simulates who's logged in on this device */}
+          <div className="mb-4 rounded-lg bg-paper/70 p-3.5">
+            <p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-ink-soft">Active role on this device</p>
+            <Seg<"owner" | "cashier">
+              value={activeRole}
+              onChange={(v) => {
+                updateSettings({ activeRole: v });
+                notify("info", `Switched to ${v}`, v === "cashier" ? "Reports, Settings & Cash Flow are now hidden" : "Full access restored");
+              }}
+              options={[
+                { key: "owner", label: "Owner" },
+                { key: "cashier", label: "Cashier" },
+              ]}
+            />
+          </div>
+
+          {staff.length === 0 ? (
+            <p className="rounded-lg border border-dashed border-line px-3.5 py-4 text-center text-xs text-ink-soft">
+              No staff added yet — add below.
+            </p>
+          ) : (
+            <ul className="space-y-2.5">
+              {staff.map((m, i) => (
+                <li key={`${m.name}-${i}`} className="flex items-center gap-3 rounded-lg border border-line bg-paper/60 px-3.5 py-2.5 transition hover:bg-pine-soft/50">
+                  <span className={`flex h-9 w-9 items-center justify-center rounded-full font-display text-xs font-extrabold ${m.role === "owner" ? "bg-mango text-pine-deep" : "bg-leaf-soft text-leaf"}`}>
+                    {m.name.split(" ").map((w) => w[0]).slice(0, 2).join("")}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-bold">{m.name}</p>
+                    <p className="truncate text-[11px] text-ink-soft">{m.role === "owner" ? "Full access" : "Sales, stock, utang — no reports/settings"}</p>
+                  </div>
+                  <span className={`rounded-full px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wide ${m.role === "owner" ? "bg-mango text-pine-deep" : "bg-leaf-soft text-leaf"}`}>{m.role}</span>
+                  <button
+                    onClick={() => updateSettings({ staff: staff.filter((_, idx) => idx !== i) })}
+                    className="btn-press rounded-md p-1.5 text-ink-soft transition hover:text-cherry"
+                    aria-label="Remove staff"
+                  >
+                    <IconX className="h-3.5 w-3.5" />
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+
+          <div className="mt-3.5 flex flex-wrap items-center gap-2 border-t border-line pt-3.5">
+            <input
+              value={staffName}
+              onChange={(e) => setStaffName(e.target.value)}
+              placeholder="Staff name"
+              className="field min-w-0 flex-1 py-1.5 text-xs"
+            />
+            <Seg<"owner" | "cashier">
+              size="sm"
+              value={staffRole}
+              onChange={setStaffRole}
+              options={[
+                { key: "owner", label: "Owner" },
+                { key: "cashier", label: "Cashier" },
+              ]}
+            />
+            <button
+              onClick={() => {
+                if (!staffName.trim()) return;
+                updateSettings({ staff: [...staff, { name: staffName.trim(), role: staffRole }] });
+                setStaffName("");
+                notify("ok", "Staff added", `${staffName.trim()} · ${staffRole}`);
+              }}
+              disabled={!staffName.trim()}
+              className="btn-press rounded-lg bg-pine px-3 py-1.5 text-[11px] font-extrabold uppercase tracking-wide text-mango transition enabled:hover:bg-pine-deep disabled:opacity-40"
+            >
+              Add
+            </button>
+          </div>
         </div>
       </Reveal>
 

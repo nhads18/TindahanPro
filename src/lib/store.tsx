@@ -22,6 +22,7 @@ import {
   type Service,
 } from "./data";
 import { STRINGS, type Lang, type StrKey } from "./i18n";
+import { pointsEarned, type LoyaltyCfg } from "./loyalty";
 import {
   freshAnchor,
   isCloudConfigured,
@@ -42,6 +43,7 @@ export interface Settings {
   sheetsSync: boolean;
   loyalty?: { enabled: boolean; pesosPerPoint: number; pointValue: number };
   staff?: { name: string; role: "owner" | "cashier" }[];
+  activeRole?: "owner" | "cashier";
   receipt?: { storeName?: string; address?: string; contact?: string; footer?: string };
 }
 
@@ -56,6 +58,10 @@ interface SaleInput {
   lines: { productId: string; qty: number }[];
   payment: Payment;
   customerId?: string;
+  /** pesos discount applied at checkout (e.g. from a loyalty-points redemption) */
+  discount?: number;
+  /** loyalty points the attached customer is redeeming this sale (deducted, guarded by settings.loyalty.enabled) */
+  redeemPoints?: number;
 }
 
 interface StoreCtx {
@@ -262,7 +268,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           });
           return { ...p, stock: p.stock - qty };
         });
-        sale.total = sale.items.reduce((s, it) => s + it.qty * it.price, 0);
+        const subtotal = sale.items.reduce((s, it) => s + it.qty * it.price, 0);
+        const discount = Math.max(0, Math.min(input.discount ?? 0, subtotal));
+        sale.total = subtotal - discount;
+        if (discount > 0) sale.discount = discount;
         let customers = prev.customers;
         if (sale.payment === "utang" && input.customerId) {
           sale.customerId = input.customerId;
@@ -283,6 +292,19 @@ export function StoreProvider({ children }: { children: ReactNode }) {
                 }
               : c,
           );
+        }
+        // loyalty: award/redeem points for whichever customer is attached to the
+        // sale (cash & gcash sales can attach a suki too, not just utang)
+        const loyalty = settingsRef.current.loyalty as LoyaltyCfg | undefined;
+        if (input.customerId && loyalty?.enabled) {
+          sale.customerId = input.customerId;
+          customers = customers.map((c) => {
+            if (c.id !== input.customerId) return c;
+            const current = c.points ?? 0;
+            const redeemed = Math.max(0, Math.min(Math.floor(input.redeemPoints ?? 0), current));
+            const earned = pointsEarned(sale.total, loyalty);
+            return { ...c, points: Math.max(0, current - redeemed + earned) };
+          });
         }
         return {
           ...prev,

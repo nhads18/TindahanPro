@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { catMeta, fmtTime, peso, peso0, startOfDay, type Payment } from "../lib/data";
 import { useStore } from "../lib/store";
+import { pointsEarned, redeemValue } from "../lib/loyalty";
 import { Modal, PayBadge, Reveal, Seg, Stepper, TwoStepDelete } from "../components/ui";
 import { CategoryGlyph, IconBarcode, IconCheck, IconReceipt, IconSearch, IconX } from "../components/Icons";
 import BarcodeScanner from "../components/BarcodeScanner";
@@ -18,7 +19,7 @@ const bucket = (ts: number): TimeBucket => {
 };
 
 export default function SalesView() {
-  const { db, t, recordSale, deleteSale, notify } = useStore();
+  const { db, t, settings, recordSale, deleteSale, notify } = useStore();
 
   /* ---------- POS state ---------- */
   const [lines, setLines] = useState<Record<string, number>>({});
@@ -27,6 +28,12 @@ export default function SalesView() {
   const [customerId, setCustomerId] = useState("");
   const [scanning, setScanning] = useState(false);
   const [receiptSaleId, setReceiptSaleId] = useState<string | null>(null);
+  const [redeem, setRedeem] = useState(false);
+  const [redeemPts, setRedeemPts] = useState(0);
+
+  const loyaltyCfg = settings.loyalty;
+  const loyaltyOn = !!loyaltyCfg?.enabled;
+  const selCustomer = customerId ? db.customers.find((c) => c.id === customerId) : undefined;
 
   /* ---------- ledger state ---------- */
   const [dayTab, setDayTab] = useState<"today" | "yesterday">("today");
@@ -75,16 +82,31 @@ export default function SalesView() {
   const itemCount = Object.values(lines).reduce((s, q) => s + q, 0);
   const canComplete = itemCount > 0 && (payment !== "utang" || customerId !== "");
 
+  /* ---------- loyalty redemption preview ---------- */
+  const availablePoints = selCustomer?.points ?? 0;
+  const maxRedeemablePoints =
+    loyaltyOn && loyaltyCfg && loyaltyCfg.pointValue > 0
+      ? Math.max(0, Math.min(availablePoints, Math.floor(total / loyaltyCfg.pointValue)))
+      : 0;
+  const redeemPtsClamped = Math.max(0, Math.min(redeemPts, maxRedeemablePoints));
+  const discountPreview = redeem && loyaltyCfg ? Math.min(redeemValue(redeemPtsClamped, loyaltyCfg), total) : 0;
+  const netTotal = Math.max(0, total - discountPreview);
+  const pointsToEarn = loyaltyOn && customerId && loyaltyCfg ? pointsEarned(netTotal, loyaltyCfg) : 0;
+
   const complete = () => {
     if (!canComplete) return;
     const saleId = recordSale({
       lines: Object.entries(lines).map(([productId, qty]) => ({ productId, qty })),
       payment,
-      customerId: payment === "utang" ? customerId : undefined,
+      customerId: customerId || undefined,
+      discount: discountPreview,
+      redeemPoints: redeem ? redeemPtsClamped : 0,
     });
     setLines({});
     setPayment("cash");
     setCustomerId("");
+    setRedeem(false);
+    setRedeemPts(0);
     setReceiptSaleId(saleId);
   };
 
@@ -213,7 +235,11 @@ export default function SalesView() {
               {payment === "utang" && (
                 <select
                   value={customerId}
-                  onChange={(e) => setCustomerId(e.target.value)}
+                  onChange={(e) => {
+                    setCustomerId(e.target.value);
+                    setRedeem(false);
+                    setRedeemPts(0);
+                  }}
                   className="field w-auto min-w-40 py-1.5 text-xs"
                 >
                   <option value="">— piliin ang suki —</option>
@@ -224,12 +250,74 @@ export default function SalesView() {
                   ))}
                 </select>
               )}
+              {payment !== "utang" && loyaltyOn && (
+                <select
+                  value={customerId}
+                  onChange={(e) => {
+                    setCustomerId(e.target.value);
+                    setRedeem(false);
+                    setRedeemPts(0);
+                  }}
+                  className="field w-auto min-w-40 py-1.5 text-xs"
+                >
+                  <option value="">— attach suki (optional) —</option>
+                  {db.customers.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name} · ★{c.points ?? 0}
+                    </option>
+                  ))}
+                </select>
+              )}
             </div>
+
+            {loyaltyOn && customerId && (
+              <div className="mb-3 rounded-lg border border-dashed border-mango/50 bg-mango-soft/30 p-3">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-xs font-bold text-mango-deep">★ {availablePoints} points available</p>
+                  {maxRedeemablePoints > 0 && (
+                    <label className="flex items-center gap-1.5 text-[11px] font-semibold text-ink-soft">
+                      <input
+                        type="checkbox"
+                        checked={redeem}
+                        onChange={(e) => {
+                          setRedeem(e.target.checked);
+                          if (e.target.checked && redeemPts === 0) setRedeemPts(maxRedeemablePoints);
+                        }}
+                      />
+                      Redeem points
+                    </label>
+                  )}
+                </div>
+                {redeem && maxRedeemablePoints > 0 && (
+                  <div className="mt-2 flex items-center gap-2">
+                    <input
+                      type="number"
+                      min={0}
+                      max={maxRedeemablePoints}
+                      value={redeemPts}
+                      onChange={(e) => setRedeemPts(Math.max(0, Math.min(parseInt(e.target.value, 10) || 0, maxRedeemablePoints)))}
+                      className="field w-20 py-1 text-xs"
+                    />
+                    <span className="text-[11px] text-ink-soft">pts → −{peso0(discountPreview)} discount</span>
+                  </div>
+                )}
+                {pointsToEarn > 0 && (
+                  <p className="mt-1.5 text-[11px] text-ink-soft">Suki earns +{pointsToEarn} pts on this sale</p>
+                )}
+              </div>
+            )}
 
             <div className="flex items-center justify-between border-t border-line pt-3">
               <div>
                 <p className="text-[11px] font-bold uppercase tracking-wider text-ink-soft">Total</p>
-                <p className="tnum font-mono text-2xl font-bold text-pine">{peso(total)}</p>
+                {discountPreview > 0 ? (
+                  <>
+                    <p className="tnum font-mono text-xs text-ink-soft line-through">{peso(total)}</p>
+                    <p className="tnum font-mono text-2xl font-bold text-pine">{peso(netTotal)}</p>
+                  </>
+                ) : (
+                  <p className="tnum font-mono text-2xl font-bold text-pine">{peso(total)}</p>
+                )}
               </div>
               <button
                 onClick={complete}

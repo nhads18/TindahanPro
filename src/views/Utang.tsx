@@ -138,7 +138,14 @@ export default function UtangView() {
                         {c.name.split(" ").map((w) => w[0]).slice(0, 2).join("")}
                       </span>
                       <span className="min-w-0 flex-1">
-                        <span className="block truncate text-sm font-bold">{c.name}</span>
+                        <span className="flex items-center gap-1.5 truncate text-sm font-bold">
+                          {c.name}
+                          {settings.loyalty?.enabled && (c.points ?? 0) > 0 && (
+                            <span className="shrink-0 rounded-full bg-mango-soft px-1.5 py-0.5 font-mono text-[9px] font-extrabold text-mango-deep">
+                              ★ {c.points}
+                            </span>
+                          )}
+                        </span>
                         <span className="block font-mono text-[11px] text-ink-soft">{c.phone}</span>
                       </span>
                       <span className="text-right">
@@ -171,7 +178,14 @@ export default function UtangView() {
             <div className="rounded-xl border border-line bg-card shadow-sm">
               <div className="flex flex-wrap items-start justify-between gap-3 border-b border-line px-5 py-4">
                 <div>
-                  <h2 className="font-display text-xl font-extrabold">{sel.name}</h2>
+                  <h2 className="flex items-center gap-2 font-display text-xl font-extrabold">
+                    {sel.name}
+                    {settings.loyalty?.enabled && (
+                      <span className="rounded-full bg-mango-soft px-2 py-0.5 font-mono text-[11px] font-extrabold text-mango-deep">
+                        ★ {sel.points ?? 0} pts
+                      </span>
+                    )}
+                  </h2>
                   <p className="font-mono text-xs text-ink-soft">{sel.phone} · {sel.history.length} entries</p>
                 </div>
                 <div className="text-right">
