@@ -11,6 +11,7 @@ import {
   type Payment,
 } from "./lib/data";
 import { netCashFlow } from "./lib/cashflow";
+import { serviceCommissionTotal } from "./lib/services";
 import { useStore } from "./lib/store";
 import { CountUp, Stepper } from "./components/ui";
 import {
@@ -23,6 +24,7 @@ import {
   IconDash,
   IconDown,
   IconSearch,
+  IconSend,
   IconSignal,
   IconSms,
   IconUp,
@@ -45,6 +47,7 @@ function PhoneApp() {
   const { db, settings, sync, recordSale, addStock, recordPayment, addUtang, notify } = useStore();
   const [tab, setTab] = useState<Tab>("home");
   const flow = useMemo(() => netCashFlow(db), [db]);
+  const svcCommission = useMemo(() => serviceCommissionTotal(db), [db]);
   const [clock, setClock] = useState(Date.now());
   useEffect(() => {
     const id = window.setInterval(() => setClock(Date.now()), 30000);
@@ -396,6 +399,26 @@ function PhoneApp() {
             <p className="mt-1 text-[11px] text-card/70">
               revenue {peso0(flow.revenue)} · gastos -{peso0(flow.expenses)} · pinamili -{peso0(flow.purchaseCost)}
             </p>
+          </div>
+
+          <div className="rounded-xl border border-line bg-card p-3.5">
+            <p className="flex items-center gap-1.5 text-[10px] font-extrabold uppercase tracking-wider text-ink-soft">
+              <IconSend className="h-3.5 w-3.5" /> Services commission
+            </p>
+            <p className="tnum mt-1 font-mono text-xl font-bold text-leaf">{peso0(svcCommission)}</p>
+            <p className="mt-0.5 text-[10px] text-ink-soft">{db.services.length} e-load / bills / GCash entries today</p>
+            {db.services.length > 0 && (
+              <ul className="mt-2 space-y-1.5">
+                {db.services.slice(0, 4).map((s) => (
+                  <li key={s.id} className="flex items-center gap-2.5 rounded-lg border border-line bg-paper/60 px-2.5 py-1.5">
+                    <span className="min-w-0 flex-1 truncate text-[11px] font-bold capitalize">{s.kind.replace("_", " ")}</span>
+                    <span className="tnum shrink-0 font-mono text-[11px] font-bold">{peso0(s.amount)}</span>
+                    <span className="tnum shrink-0 font-mono text-[10px] font-bold text-leaf">+{peso0(s.commission)}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <p className="mt-2 text-[10px] text-ink-soft">Full quick-entry cards — open the web dashboard.</p>
           </div>
 
           <div>

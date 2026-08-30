@@ -13,6 +13,7 @@ import {
   IconMonitor,
   IconPhone,
   IconReceipt,
+  IconSend,
   IconUsers,
   IconWallet,
   LogoMark,
@@ -24,10 +25,11 @@ import StockView from "./views/Stock";
 import UtangView from "./views/Utang";
 import ReportsView from "./views/Reports";
 import CashFlowView from "./views/CashFlow";
+import ServicesView from "./views/Services";
 import SettingsView from "./views/Settings";
 import MobileScene from "./Mobile";
 
-type View = "dashboard" | "sales" | "products" | "stock" | "utang" | "reports" | "cashflow" | "settings";
+type View = "dashboard" | "sales" | "products" | "stock" | "utang" | "reports" | "cashflow" | "services" | "settings";
 
 const NAV: { key: View; icon: ComponentType<{ className?: string }>; label: StrKey }[] = [
   { key: "dashboard", icon: IconDash, label: "nav.dashboard" },
@@ -37,6 +39,7 @@ const NAV: { key: View; icon: ComponentType<{ className?: string }>; label: StrK
   { key: "utang", icon: IconUsers, label: "nav.utang" },
   { key: "reports", icon: IconChart, label: "nav.reports" },
   { key: "cashflow", icon: IconWallet, label: "nav.cashflow" },
+  { key: "services", icon: IconSend, label: "nav.services" },
   { key: "settings", icon: IconGear, label: "nav.settings" },
 ];
 
@@ -48,6 +51,7 @@ const VIEWS: Record<View, ComponentType> = {
   utang: UtangView,
   reports: ReportsView,
   cashflow: CashFlowView,
+  services: ServicesView,
   settings: SettingsView,
 };
 

@@ -12,6 +12,7 @@ import {
   productAgg,
   type Cat,
 } from "../lib/data";
+import { serviceCommissionTotal } from "../lib/services";
 import { useStore } from "../lib/store";
 import { AreaChart, Donut, HBars, Heatmap } from "../components/charts";
 import { Delta, Reveal, Seg } from "../components/ui";
@@ -31,8 +32,14 @@ export default function ReportsView() {
   const grid = useMemo(() => heatmap(db), [db]);
 
   const totals = useMemo(() => {
-    const revenue = series.reduce((s, x) => s + x.revenue, 0);
-    const profit = series.reduce((s, x) => s + x.profit, 0);
+    // Services (e-load/bills/GCash) reset alongside the daily-anchored demo
+    // DB, so every recorded service falls within any reporting period —
+    // fold the commission earned into revenue/profit here. Not routed
+    // through netCashFlow's serviceCommission (that's the Cash Flow view's
+    // own figure) to avoid double-counting it.
+    const svcCommission = serviceCommissionTotal(db);
+    const revenue = series.reduce((s, x) => s + x.revenue, 0) + svcCommission;
+    const profit = series.reduce((s, x) => s + x.profit, 0) + svcCommission;
     const count = series.reduce((s, x) => s + x.count, 0);
     const prevRevenue = prev.reduce((s, x) => s + x.revenue, 0);
     return {
@@ -43,7 +50,7 @@ export default function ReportsView() {
       avg: count > 0 ? revenue / count : 0,
       delta: prevRevenue > 0 ? ((revenue - prevRevenue) / prevRevenue) * 100 : 0,
     };
-  }, [series, prev]);
+  }, [db, series, prev]);
 
   const topByRevenue = useMemo(
     () =>

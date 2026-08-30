@@ -12,6 +12,7 @@ import {
   startOfDay,
   timeAgo,
 } from "../lib/data";
+import { serviceCommissionTotal } from "../lib/services";
 import { useStore } from "../lib/store";
 import { Bars, Donut, HBars } from "../components/charts";
 import { CountUp, Delta, Reveal } from "../components/ui";
@@ -58,6 +59,15 @@ export default function Dashboard() {
     };
     const today = sum(today0, now + 1);
     const yest = sum(yest0, today0);
+    // Services (e-load/bills/GCash) reset alongside the daily-anchored demo
+    // DB, so every recorded service falls within "today" — fold the
+    // commission earned straight into today's revenue/profit figure.
+    // (Not routed through netCashFlow's serviceCommission — that selector
+    // already adds it once for the Cash Flow view; adding it there too
+    // would double-count.)
+    const svcCommission = serviceCommissionTotal(db);
+    today.total += svcCommission;
+    today.profit += svcCommission;
     const collected = db.customers.reduce(
       (s, c) => s + c.history.filter((h) => h.type === "payment" && h.ts >= today0).reduce((a, h) => a + h.amount, 0),
       0,

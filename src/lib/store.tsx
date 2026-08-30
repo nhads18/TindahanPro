@@ -19,6 +19,7 @@ import {
   type Product,
   type Purchase,
   type Sale,
+  type Service,
 } from "./data";
 import { STRINGS, type Lang, type StrKey } from "./i18n";
 import {
@@ -74,6 +75,7 @@ interface StoreCtx {
   addCustomer: (name: string, phone: string) => void;
   addExpense: (e: Omit<Expense, "id" | "ts">) => void;
   addPurchase: (p: Omit<Purchase, "id" | "ts">) => void;
+  addService: (s: Omit<Service, "id" | "ts">) => void;
   updateSettings: (patch: Partial<Settings>) => void;
   resetDemo: () => void;
   cloud: { configured: boolean; mode: "demo" | "cloud" | "gate"; email: string | null };
@@ -81,6 +83,13 @@ interface StoreCtx {
   logout: () => void;
   continueDemo: () => void;
 }
+
+const SERVICE_LABEL: Record<Service["kind"], string> = {
+  eload: "e-load",
+  bills: "bills payment",
+  gcash_in: "GCash cash-in",
+  gcash_out: "GCash cash-out",
+};
 
 const KEY = "tindahanpro.db";
 const uid = () => "u" + Date.now().toString(36) + Math.floor(Math.random() * 1e4).toString(36);
@@ -504,6 +513,18 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     [markSync, notify],
   );
 
+  const addService = useCallback(
+    (s: Omit<Service, "id" | "ts">) => {
+      setDb((prev) => ({
+        ...prev,
+        services: [{ id: uid(), ts: Date.now(), ...s }, ...prev.services],
+      }));
+      markSync();
+      notify("ok", `${peso(s.amount)} ${SERVICE_LABEL[s.kind]}`, `Commission ${peso(s.commission)}`);
+    },
+    [markSync, notify],
+  );
+
   const updateSettings = useCallback(
     (patch: Partial<Settings>) => {
       setSettings((s) => ({ ...s, ...patch }));
@@ -560,6 +581,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         addCustomer,
         addExpense,
         addPurchase,
+        addService,
         updateSettings,
         resetDemo,
         cloud: { configured, mode, email: cloudUser?.email ?? null },
